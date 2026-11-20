@@ -1,0 +1,43 @@
+// AI-Powered Code Migration Tool — Prisma schema
+// SQLite is used as the local-first store. Codemod specs are JSON-stringified
+// into the `codemod` column; checklists into the `checklist` column.
+// Each MigrationApplication is one (filePath, originalCode, transformedCode)
+// triple persisted when the user clicks "Apply".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Migration {
+  id          String                @id @default(cuid())
+  name        String
+  description String
+  codemod     String // JSON-stringified CodemodSpec
+  checklist   String // JSON-stringified ChecklistItem[]
+  status      String                @default("draft") // draft | ready | applied
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  applications MigrationApplication[]
+}
+
+model MigrationApplication {
+  id                 String    @id @default(cuid())
+  migrationId        String
+  migration          Migration @relation(fields: [migrationId], references: [id], onDelete: Cascade)
+  filePath           String
+  originalCode       String
+  transformedCode    String
+  matchCount         Int       @default(0)
+  replacements       Int       @default(0)
+  verificationStatus String? // "passed" | "failed" | "skipped"
+  appliedAt          DateTime?
+  rolledBackAt       DateTime?
+  createdAt          DateTime  @default(now())
+
+  @@index([migrationId])
+}
